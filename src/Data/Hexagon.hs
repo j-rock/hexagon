@@ -16,18 +16,18 @@
 module Data.Hexagon
     (
       -- * The fundamental coordinate type for a 2D hexagonal grid.
-      Hexagon(..)
+      Hexagon
 
       -- * Hexagonal grid orientations
     , FlatTop(..)
     , PointyTop(..)
 
       -- * Alternative coordinate systems
-    , OddR
-    , EvenR
-    , OddQ
-    , EvenQ
-    , Axial
+    , OddR(..)
+    , EvenR(..)
+    , OddQ(..)
+    , EvenQ(..)
+    , Axial(..)
     , HexCoordTuple(..)
 
       -- * Relative directions
@@ -208,8 +208,8 @@ i2dConv outer inner ind dep =
 
 -- | A class to structure conversions between coordinate systems
 class HexCoordTuple t where
-  toHexagon   :: proxy t -> (Integer, Integer) -> Hexagon ori
-  fromHexagon :: proxy t -> Hexagon ori -> (Integer, Integer)
+  toHexagon   :: t -> (Integer, Integer) -> Hexagon ori
+  fromHexagon :: t -> Hexagon ori -> (Integer, Integer)
 
 instance HexCoordTuple OddR where
   toHexagon   _ (q,r)       = fromXZ (i2dConv (-) (-) q r) r

@@ -20,10 +20,9 @@ type Prop a = a -> Bool
 
 -- Helps get around Orphan Instances problem
 type FakeHexagon t = (Integer, Integer)
-data P t = P
 
 fromFake :: FakeHexagon t -> Hexagon ori
-fromFake = toHexagon (P :: P Axial)
+fromFake = toHexagon Axial
 
 type RangedHexagon t = (FakeHexagon t, NonNegative Integer)
 
@@ -74,20 +73,20 @@ prop_ringIsDifferenceBetweenCloseRanges (fh, NonNegative i) = ring == (bigRange 
           bigRange   = HS.fromList $ range origin i
           smallRange = HS.fromList $ range origin (i-1)
 
-forwardConversion :: HexCoordTuple t => proxy t -> Prop (FakeHexagon ori)
+forwardConversion :: HexCoordTuple t => t -> Prop (FakeHexagon ori)
 forwardConversion p fh = fh == fromHexagon p (toHexagon p fh)
 
 prop_oddrForwardConversionsAreIdentity :: Prop (FakeHexagon ori)
-prop_oddrForwardConversionsAreIdentity = forwardConversion (P :: P OddR)
+prop_oddrForwardConversionsAreIdentity = forwardConversion OddR
 
 prop_evenrForwardConversionsAreIdentity :: Prop (FakeHexagon ori)
-prop_evenrForwardConversionsAreIdentity = forwardConversion (P :: P EvenR)
+prop_evenrForwardConversionsAreIdentity = forwardConversion EvenR
 
 prop_oddqForwardConversionsAreIdentity :: Prop (FakeHexagon ori)
-prop_oddqForwardConversionsAreIdentity = forwardConversion (P :: P OddQ)
+prop_oddqForwardConversionsAreIdentity = forwardConversion OddQ
 
 prop_evenqForwardConversionsAreIdentity :: Prop (FakeHexagon ori)
-prop_evenqForwardConversionsAreIdentity = forwardConversion (P :: P EvenQ)
+prop_evenqForwardConversionsAreIdentity = forwardConversion EvenQ
 
 prop_axialForwardConversionsAreIdentity :: Prop (FakeHexagon ori)
-prop_axialForwardConversionsAreIdentity = forwardConversion (P :: P Axial)
+prop_axialForwardConversionsAreIdentity = forwardConversion Axial
