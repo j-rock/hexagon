@@ -5,52 +5,53 @@
 --
 -- Maintainer   : Joseph Rock <wax818@gmail.com>
 -- Portability  : non-portable
---
--- This module is the kitchen sink of the hexagon package
 ------------------------------------------------------------
 
-{-# LANGUAGE DeriveGeneric       #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeFamilies        #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TypeFamilies  #-}
 
 module Data.Hexagon
     (
-      -- * The fundamental coordinate type for a 2D hexagonal grid.
       Hexagon
 
-      -- * Hexagonal grid orientations
+      -- * Grid orientations
     , FlatTop(..)
     , PointyTop(..)
 
+      -- * Relative directions
+    , TopBottomDir(..)
+    , EastWestDir(..)
+    , Orientation(..)
+    , neighbors
+
+      -- * Inter-hexagon operations
+    , binOp
+    , plus
+    , minus
+    , times
+
+      -- * Adjacency
+    , dist
+
+      -- * Building collections
+    , lineTo
+    , range
+    , rangeWithBlocked
+    , ringAround
+
+      -- * Rotations
+    , RotateDir(..)
+    , rotateAboutOrigin
+    , rotateAroundPoint
+
       -- * Alternative coordinate systems
+    , HexCoordTuple(..)
     , OddR(..)
     , EvenR(..)
     , OddQ(..)
     , EvenQ(..)
     , Axial(..)
-    , HexCoordTuple(..)
-
-      -- * Relative directions
-    , AboveBelowDir(..)
-    , LeftRightDir(..)
-    , Orientation(..)
-    , RotateDir(..)
-
-      -- * Various operations
-    , neighbors
-    , binOp
-    , plus, (+:)
-    , minus, (-:)
-    , times, (*:)
-    , dist
-    , lineTo
-    , range
-    , rangeWithBlocked
-    , rotateAboutOrigin
-    , rotateAroundPoint
-    , ringAround
     )  where
-
 
 import           Control.Monad            (forM_, replicateM_, unless)
 import           Control.Monad.ST         (runST)
@@ -63,117 +64,139 @@ import qualified Data.STRef               as ST
 import           GHC.Generics             (Generic)
 import           Prelude                  hiding (Left, Right)
 
--- | The orientation in which hexagons have a horizontal edge on the top
---
--- Pictorially:      __
---                __/  \__
---               /  \__/  \
---               \__/  \__/
---               /  \__/  \
---               \__/  \__/
---                  \__/
+
+{-|
+The orientation in which hexagons have a horizontal edge on the top.
+
+@
+Pictorially:      __
+               \_\_/  \\__
+              \/  \\__\/  \\
+              \\_\_\/  \\_\_\/
+              \/  \\_\_\/  \\
+              \\_\_\/  \\_\_\/
+                 \\_\_\/
+@
+-}
 data FlatTop = FlatTop deriving (Eq, Ord, Show, Enum, Bounded)
 
--- | The orientation in which hexagons have a vertical edges on the sides
---
--- Pictorially:
---                /\   /\
---               /  \ /  \
---              |    |    |
---              |    |    |
---               \  / \  /
---                \/   \/
+{-|
+The orientation in which hexagons have vertical edges on the sides.
+
+@
+Pictorially:
+               \/\\   \/\\
+              \/  \\ \/  \\
+             |    |    |
+             |    |    |
+              \\  \/ \\  \/
+               \\\/   \\\/
+@
+-}
 data PointyTop = PointyTop deriving (Eq, Ord, Show, Enum, Bounded)
 
--- | Relative directions with respect to "above-below"-ness
---
--- On a FlatTop, these correspond to the edges
---
---                        Above
---                        ____
---             AboveLeft /    \ AboveRight
---                      /      \
---                      \      /
---            AboveRight \____/ BelowRight
---                        Below
---
---
--- On a PointyTop, these correspond to the corners
---
---               Above
---                /\
---    AboveLeft  /  \ AboveRight
---              |    |
---              |    |
---     BelowLeft \  / BelowRight
---                \/
---               Below
-data AboveBelowDir = BelowRight
-                   | Below
-                   | BelowLeft
-                   | AboveLeft
-                   | Above
-                   | AboveRight
-                     deriving (Eq, Ord, Show, Enum, Bounded)
+{-|
+Relative directions with respect to \"Top-Bottom\"-ness.
 
--- | Relative directions with respect to "left-right"-ness
---
--- On a FlatTop, these correspond to the corners
---
---              LeftAbove ____ RightAbove
---                       /    \
---               Left   /      \  Right
---                      \      /
---                       \____/
---                LeftBelow  RightBelow
---
--- On a PointyTop, these correspond to the edges
---
---                /\
---    LeftAbove  /  \ RightAbove
---              |    |
---         Left |    | Right
---               \  /
---      LeftBelow \/ RightBelow
-data LeftRightDir = Right
-                  | RightBelow
-                  | LeftBelow
-                  | Left
-                  | LeftAbove
-                  | RightAbove
+On a FlatTop, these correspond to the edges:
+
+@
+
+            Top
+            ____
+   TopLeft /    \\ TopRight
+          /      \\
+          \\      /
+BottomLeft \\____/ BottomRight
+           Bottom
+@
+
+On a PointyTop, these correspond to the corners:
+
+@
+           Top
+            /\\
+  TopLeft  /  \\ TopRight
+          |    |
+          |    |
+BottomLeft \\  / BottomRight
+            \\/
+          Bottom
+@
+-}
+data TopBottomDir = BottomRight
+                  | Bottom
+                  | BottomLeft
+                  | TopLeft
+                  | Top
+                  | TopRight
                     deriving (Eq, Ord, Show, Enum, Bounded)
 
+{-|
+Relative directions with respect to \"East-West\"-ness.
+
+On a FlatTop, these correspond to the corners:
+
+@
+NorthWest ____ NorthEast
+         /    \\
+   West /      \\  East
+        \\      /
+         \\____/
+ SouthWest    SouthEast
+@
+
+On a PointyTop, these correspond to the edges:
+
+@
+
+NorthWest /\\ NorthEast
+         /  \\
+        |    |
+   West |    | East
+         \\  /
+SouthWest \\/ SouthEast
+@
+-}
+data EastWestDir = East
+                 | SouthEast
+                 | SouthWest
+                 | West
+                 | NorthWest
+                 | NorthEast
+                   deriving (Eq, Ord, Show, Enum, Bounded)
+
 -- | Locks down which relative directions correspond to edges/corners on
--- a given orientation
+-- a given orientation.
 class Orientation ori where
     -- | Relative directions of edges on a given hexagon.
     type EdgeDir   ori :: *
     -- | Relative directions of corners on a given hexagon.
     type CornerDir ori :: *
     -- | Compute the hexagon which borders the argument hexagon on the
-    -- relative edge
+    -- relative edge.
     neighbor    :: EdgeDir ori -> Hexagon ori -> Hexagon ori
 
 instance Orientation FlatTop where
-    type EdgeDir   FlatTop = AboveBelowDir
-    type CornerDir FlatTop = LeftRightDir
+    type EdgeDir   FlatTop = TopBottomDir
+    type CornerDir FlatTop = EastWestDir
 
-    neighbor BelowRight = (+:) $ Hex 1 (-1) 0
-    neighbor Below      = (+:) $ Hex 0 (-1) 1
-    neighbor BelowLeft  = (+:) $ Hex (-1) 0 1
-    neighbor AboveLeft  = (+:) $ Hex (-1) 1 0
-    neighbor Above      = (+:) $ Hex 0 1 (-1)
-    neighbor AboveRight = (+:) $ Hex 1 0 (-1)
+    neighbor BottomRight = plus $ Hex 1 (-1) 0
+    neighbor Bottom      = plus $ Hex 0 (-1) 1
+    neighbor BottomLeft  = plus $ Hex (-1) 0 1
+    neighbor TopLeft     = plus $ Hex (-1) 1 0
+    neighbor Top         = plus $ Hex 0 1 (-1)
+    neighbor TopRight    = plus $ Hex 1 0 (-1)
 
 instance Orientation PointyTop where
-    type EdgeDir   PointyTop = LeftRightDir
-    type CornerDir PointyTop = AboveBelowDir
-    neighbor Right      = (+:) $ Hex 1 (-1) 0
-    neighbor RightBelow = (+:) $ Hex 0 (-1) 1
-    neighbor LeftBelow  = (+:) $ Hex (-1) 0 1
-    neighbor Left       = (+:) $ Hex (-1) 1 0
-    neighbor LeftAbove  = (+:) $ Hex 0 1 (-1)
-    neighbor RightAbove = (+:) $ Hex 1 0 (-1)
+    type EdgeDir   PointyTop = EastWestDir
+    type CornerDir PointyTop = TopBottomDir
+    neighbor East       = plus $ Hex 1 (-1) 0
+    neighbor SouthEast  = plus $ Hex 0 (-1) 1
+    neighbor SouthWest  = plus $ Hex (-1) 0 1
+    neighbor West       = plus $ Hex (-1) 1 0
+    neighbor NorthWest  = plus $ Hex 0 1 (-1)
+    neighbor NorthEast  = plus $ Hex 1 0 (-1)
 
 -- | Retrieves all neighbors for a hexagon in no particular order.
 neighbors :: Hexagon ori -> [Hexagon ori]
@@ -232,32 +255,41 @@ instance HexCoordTuple Axial where
   fromHexagon _ (Hex x _ z) = (x,z)
 
 -- | Kind of like a monomorphic zipWith on two Hexagons.
+-- In pseudo-Haskell:
+--
+-- @
+-- let ax = toHexagon Axial
+--     h  = (x, y ) :: (Integer, Integer)
+--     h' = (x',y') :: (Integer, Integer)
+--     f            :: Integer -> Integer -> Integer
+-- binOp f (ax h) (ax h') \<-\> ax $ (f x x', f y y')
+-- @
 binOp :: (Integer -> Integer -> Integer) -> Hexagon ori -> Hexagon ori -> Hexagon ori
 binOp f (Hex x y z) (Hex x' y' z') = Hex (f x x') (f y y') (f z z')
 
--- | Adds the corresponding components of two Hexagons
+-- | Adds the corresponding components of two Hexagons.
+--
+-- @
+-- plus = binOp (+)
+-- @
 plus :: Hexagon ori -> Hexagon ori -> Hexagon ori
 plus = binOp (+)
 
--- | Adds the corresponding components of two Hexagons
-(+:) :: Hexagon ori -> Hexagon ori -> Hexagon ori
-(+:) = plus
-
--- | Subtracts the corresponding components of two Hexagons
+-- | Subtracts the corresponding components of two Hexagons.
+--
+-- @
+-- minus = binOp (-)
+-- @
 minus :: Hexagon ori -> Hexagon ori -> Hexagon ori
 minus = binOp (-)
 
--- | Subtracts the corresponding components of two Hexagons
-(-:) :: Hexagon ori -> Hexagon ori -> Hexagon ori
-(-:) = minus
-
--- | Multiplies the corresponding components of two Hexagons
+-- | Multiplies the corresponding components of two Hexagons.
+--
+-- @
+-- times = binOp (*)
+-- @
 times :: Hexagon ori -> Hexagon ori -> Hexagon ori
 times = binOp (*)
-
--- | Multiplies the corresponding components of two Hexagons
-(*:) :: Hexagon ori -> Hexagon ori -> Hexagon ori
-(*:) = minus
 
 -- | Computes the distance between two Hexagons.
 -- This distance can be thought of the length of the straight-line
@@ -306,15 +338,30 @@ generalizedRangeCollect (xmin, xmax) (ymin,ymax) (zmin,zmax) =
        let z = negate (x + y)
        return (Hex x y z)
 
--- | All Hexagons within a given distance from the argument Hexagon
+-- | All Hexagons within a given distance from the argument Hexagon.
 range :: Hexagon ori -> Integer -> [Hexagon ori]
 range (Hex x y z) n = generalizedRangeCollect xs ys zs
     where xs = (x - n, x + n)
           ys = (y - n, y + n)
           zs = (z - n, z + n)
 
--- | All Hexagons within a given distance from the argument Hexagon
--- such that Hexagons which succeed the predicate are blocked (excluded).
+{-| Same as 'range' except it factors in which Hexagons are blocked.
+
+The predicate you pass to this function asks if a given Hexagon is blocked. For example:
+
+@
+let origin                     = toHexagon Axial (0,0)
+    blockCircleWithRadius4 hex = dist origin hex < 4
+    take10Steps                = 10
+    startHex                   = toHexagon Axial (2,2)
+in rangeWithBlocked startHex take10Steps blockCircleWithRadius4
+@
+
+In the above example, the function starts at the Hexagon located at Axial(2,2).
+It takes as many as ten steps from that start location. It skips any Hexagon that
+is closer than four units from the origin. The result it returns is all of the
+Hexagons that could have been stepped on.
+-}
 rangeWithBlocked :: Hexagon ori -> Integer -> (Hexagon ori -> Bool) -> [Hexagon ori]
 rangeWithBlocked start n isBlocked =
     runST $ do visited <- newSet
@@ -339,20 +386,34 @@ rangeWithBlocked start n isBlocked =
                                   ST.writeSTRef ofr new
               getVisited vs = map fst <$> HT.toList vs
 
--- | Simple sum type for Clockwise/Counter-clockwise
+-- | Simple sum type for Clockwise/Counter-clockwise.
 data RotateDir = CW | CCW deriving (Eq, Ord, Show, Enum, Bounded)
 
--- | Rotate a Hexagon 60 degrees in a given direction about the origin
+-- | Rotate a Hexagon 60 degrees in a given direction about the origin.
 rotateAboutOrigin :: RotateDir -> Hexagon ori -> Hexagon ori
 rotateAboutOrigin CW  (Hex x y z) = Hex (-z) (-x) (-y)
 rotateAboutOrigin CCW (Hex x y z) = Hex (-y) (-z) (-x)
 
--- | Rotate a Hexagon 60 degrees in a given direction about a center Hexagon
+{-|
+Rotate a Hexagon 60 degrees in a given direction about a center Hexagon.
+
+@
+let rotationCenter :: Hexagon ori
+    pointToRotate  :: Hexagon ori
+in rotateAroundPoint rotationCenter CCW pointToRotate
+@
+-}
 rotateAroundPoint :: Hexagon ori -> RotateDir -> Hexagon ori -> Hexagon ori
 rotateAroundPoint center rdir h = center `plus` rotateAboutOrigin rdir (h `minus` center)
 
 -- | Retrieves all Hexagons contained in the ring of given radius about the
 -- argument Hexagon.
+--
+-- In pseudo-Haskell:
+--
+-- @
+-- ringAround h i = [h' | h' <- allHexagons, dist h h' == i]
+-- @
 ringAround :: Hexagon ori -> Integer -> [Hexagon ori]
 ringAround center 0      = [center]
 ringAround center radius = ns >>= ringEdge

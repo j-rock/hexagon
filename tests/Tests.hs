@@ -29,8 +29,8 @@ type RangedHexagon t = (FakeHexagon t, NonNegative Integer)
 case_onlySixCornerAndEdgeDirections :: Assertion
 case_onlySixCornerAndEdgeDirections = assertBool "Only six directions for corners and edges" onlySixDir
     where onlySixDir = all ((==6) . length) (lr, ab)
-          lr = [minBound..maxBound] :: [LeftRightDir]
-          ab = [minBound..maxBound] :: [AboveBelowDir]
+          lr = [minBound..maxBound] :: [EastWestDir]
+          ab = [minBound..maxBound] :: [TopBottomDir]
 
 prop_hexagonIsNeighborOfItsNeighbors :: Prop (FakeHexagon ori)
 prop_hexagonIsNeighborOfItsNeighbors fh = all (elem hex) (map neighbors $ neighbors hex)
