@@ -10,13 +10,15 @@ Motivation
 ------------
 Some fine folks pointed me to the Red Blob Games [**blog post**](http://www.redblobgames.com/grids/hexagons/#hex-to-pixel) on "Hexagonal Grids." The awesomeness contained on that page inspired me to transcribe some of the functionality therein into a Haskell library. The blog talks about some common coordinate systems for hexagonal grids. In the hexagon library, I've chosen the cube coordinate system (trading memory for ease of implementation).
 
-Hopefully this can aid Haskell developers looking to implement a hexagonal grid game.
+Hopefully this package aids Haskell developers looking to implement a hexagonal grid game.
 
 Prior Art
 ------------
 Check out the totally awesome [**grid**](https://hackage.haskell.org/package/grid) library.
 
-> **grid** enables you to think about the grid itself, while **hexagon** is more focused on
+> I'm not entirely convinced that **hexagon** brings that much more to the table than **grid**.
+> If anything, **hexagon** makes it easy to operate in a canonical space and pull out results
+> in various coordinate systems.
 
 Examples
 -------------
@@ -99,6 +101,7 @@ Data.Hexagon> map (fromHexagon Axial) $ gridOrigin `lineTo` flatHex
 ```
 If you remember, **gridOrigin** represented (0,0) and flatTop represented (5,3). **lineTo** gives us an inclusive path between the two points.
 
-# . . . More to come . . .
+Docs
+----
 
-
+Go check out the [**docs**](https://github.com/j-rock/hexagon/docs).
