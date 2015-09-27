@@ -100,8 +100,3 @@ Data.Hexagon> map (fromHexagon Axial) $ gridOrigin `lineTo` flatHex
 [(0,0),(1,0),(1,1),(2,1),(2,2),(3,2),(4,2),(4,3),(5,3)]
 ```
 If you remember, **gridOrigin** represented (0,0) and flatTop represented (5,3). **lineTo** gives us an inclusive path between the two points.
-
-Docs
-----
-
-Go check out the [**docs**](https://github.com/j-rock/hexagon/docs).
